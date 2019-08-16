@@ -30,9 +30,9 @@ namespace NFive.Time.Server
 					: this.serverTime);
 			});
 
-			if(!TimeSpan.TryParse(this.Configuration.StartTime, out this.serverTime))
-				throw new Exception("Invalid default starting serverTime provided in the configuration file");
+			this.serverTime = this.Configuration.StartTime;
 			this.previousTime = DateTime.Now;
+
 			timeUpdateTimer = new Timer()
 			{
 				AutoReset = true,
