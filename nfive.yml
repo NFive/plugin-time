@@ -1,0 +1,15 @@
+name: NFive/plugin-time
+version: 1.0.0
+description: A plugin to sync time between the server and clients
+author: NFive
+license: LGPL-3.0-or-later
+server:
+  main:
+    - NFive.Time.Server
+  include:
+    - NFive.Time.Shared
+client:
+  main:
+    - NFive.Time.Client
+  include:
+    - NFive.Time.Shared
