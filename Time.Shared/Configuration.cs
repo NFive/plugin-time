@@ -9,7 +9,7 @@ namespace NFive.Time.Shared
 		public TimeSpan StartTime { get; set; } = new TimeSpan(12,0,0); 
 		public TimeModifiersConfiguration Modifiers { get; set; } = new TimeModifiersConfiguration();
 		public NightHoursConfiguration NightHours { get; set; } = new NightHoursConfiguration();
-		public int TimeSyncRate { get; set; } = 60000;
+		public TimeSpan TimeSyncRate { get; set; } = new TimeSpan(1, 0, 0); 
 	}
 
 	public class TimeModifiersConfiguration

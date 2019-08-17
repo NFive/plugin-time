@@ -32,10 +32,14 @@ namespace NFive.Time.Client
 			// Update local configuration on server configuration change
 			this.Rpc.Event(TimeEvents.Configuration).On<Configuration>((e, c) => this.config = c);
 
-			this.serverTime = await this.Rpc.Event(TimeEvents.RequestTime).Request<TimeSpan>();
+			this.Rpc.Event(TimeEvents.Sync).On<TimeSpan>((e, t) =>
+			{
+				this.serverTime = t;
+				this.previousTime = DateTime.Now;
+			});
 
-			this.Ticks.Attach(TimeSyncTick);
-
+			this.serverTime = await this.Rpc.Event(TimeEvents.Sync).Request<TimeSpan>();
+			this.previousTime = DateTime.Now;
 			this.Ticks.Attach(TimeUpdateTick);
 		}
 
@@ -70,18 +74,11 @@ namespace NFive.Time.Client
 						this.serverTime = this.serverTime.Subtract(new TimeSpan(1, 0, 0, 0));
 				}
 			}
-			
-			
+
 			API.NetworkOverrideClockTime(this.serverTime.Hours, this.serverTime.Minutes, this.serverTime.Seconds);
 
 			// this.Logger.Debug("Client time: " + this.serverTime);
 			await Delay(TimeSpan.FromSeconds(1));
-		}
-
-		private async Task TimeSyncTick()
-		{
-			this.serverTime = await this.Rpc.Event(TimeEvents.RequestTime).Request<TimeSpan>();
-			await Delay(TimeSpan.FromMilliseconds(this.config.TimeSyncRate));
 		}
 	}
 }

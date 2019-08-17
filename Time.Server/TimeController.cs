@@ -16,6 +16,7 @@ namespace NFive.Time.Server
 	{
 		private TimeSpan serverTime;
 		private Timer timeUpdateTimer;
+		private Timer timeBroadcastTimer;
 		private DateTime previousTime;
 
 		public TimeController(ILogger logger, IEventManager events, IRpcHandler rpc, IRconManager rcon, Configuration configuration) : base(logger, events, rpc, rcon, configuration)
@@ -23,7 +24,7 @@ namespace NFive.Time.Server
 			// Send configuration when requested
 			this.Rpc.Event(TimeEvents.Configuration).On(e => e.Reply(this.Configuration));
 
-			this.Rpc.Event(TimeEvents.RequestTime).On(e =>
+			this.Rpc.Event(TimeEvents.Sync).On(e =>
 			{
 				e.Reply(this.Configuration.UseRealTime
 					? new TimeSpan(DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)
@@ -37,9 +38,22 @@ namespace NFive.Time.Server
 			{
 				AutoReset = true,
 				Enabled = true,
-				Interval = 1000,
+				Interval = 1000
 			};
 			timeUpdateTimer.Elapsed += UpdateTime;
+
+			timeBroadcastTimer = new Timer()
+			{
+				AutoReset = true,
+				Enabled = true,
+				Interval = this.Configuration.TimeSyncRate.TotalMilliseconds
+			};
+			timeBroadcastTimer.Elapsed += BroadcastTime;
+		}
+
+		private void BroadcastTime(object sender, ElapsedEventArgs e)
+		{
+			this.Rpc.Event(TimeEvents.Sync).Trigger(this.serverTime);
 		}
 
 		private void UpdateTime(object sender, ElapsedEventArgs e)
