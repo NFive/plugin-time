@@ -1,14 +1,14 @@
 using JetBrains.Annotations;
 using NFive.SDK.Client.Commands;
 using NFive.SDK.Client.Events;
-using NFive.SDK.Client.Interface;
-using NFive.SDK.Client.Rpc;
 using NFive.SDK.Client.Services;
 using NFive.SDK.Core.Diagnostics;
 using NFive.SDK.Core.Models.Player;
 using System;
 using System.Threading.Tasks;
 using CitizenFX.Core.Native;
+using NFive.SDK.Client.Communications;
+using NFive.SDK.Client.Interface;
 using NFive.Time.Shared;
 using NFive.Time.Shared.Utilities;
 
@@ -21,38 +21,34 @@ namespace NFive.Time.Client
 		private TimeSpan serverTime;
 		private DateTime previousTime;
 
-		public TimeService(ILogger logger, ITickManager ticks, IEventManager events, IRpcHandler rpc, ICommandManager commands, OverlayManager overlay, User user) : base(logger, ticks, events, rpc, commands, overlay, user) { }
+		public TimeService(ILogger logger, ITickManager ticks, ICommunicationManager comms, ICommandManager commands, IOverlayManager overlay, User user) : base(logger, ticks, comms, commands, overlay, user) { }
 
 		public override async Task Started()
 		{
 			// Request server configuration
-			this.config = await this.Rpc.Event(TimeEvents.Configuration).Request<Configuration>();
+			this.config = await this.Comms.Event(TimeEvents.Configuration).ToServer().Request<Configuration>();
 
-
-			// Update local configuration on server configuration change
-			this.Rpc.Event(TimeEvents.Configuration).On<Configuration>((e, c) => this.config = c);
-
-			this.Rpc.Event(TimeEvents.Sync).On<TimeSpan>((e, t) =>
+			this.Comms.Event(TimeEvents.Sync).FromServer().On<TimeSpan>((e, t) =>
 			{
 				this.serverTime = t;
 				this.previousTime = DateTime.Now;
 			});
 
-			this.serverTime = await this.Rpc.Event(TimeEvents.Sync).Request<TimeSpan>();
+			this.serverTime = await this.Comms.Event(TimeEvents.Sync).ToServer().Request<TimeSpan>();
 			this.previousTime = DateTime.Now;
-			this.Ticks.Attach(TimeUpdateTick);
+			this.Ticks.On(TimeUpdateTick);
 		}
 
 		private async Task TimeUpdateTick()
 		{
-			int secondsDiff = DateTime.Now.Second - this.previousTime.Second;
-			if (secondsDiff == 0)
+			int secondsDiff = (int)(DateTime.Now - this.previousTime).TotalSeconds;
+			if (secondsDiff < 1)
 				return;
 			this.previousTime = DateTime.Now;
 
 			if (this.config.UseRealTime)
 			{
-				this.serverTime = this.serverTime.Add(new TimeSpan(0, 0, secondsDiff));
+				this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(secondsDiff));
 			}
 			else
 			{
@@ -62,22 +58,21 @@ namespace NFive.Time.Client
 						this.config.NightHours.End))
 					{
 						int elapsedSeconds = (int)Math.Ceiling(this.config.Modifiers.Night);
-						this.serverTime = this.serverTime.Add(new TimeSpan(0, 0, elapsedSeconds));
+						this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
 					}
 					else
 					{
 						int elapsedSeconds = (int)Math.Ceiling(this.config.Modifiers.Day);
-						this.serverTime = this.serverTime.Add(new TimeSpan(0, 0, elapsedSeconds));
+						this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
 					}
 
 					if (this.serverTime.Days > 0)
 						this.serverTime = this.serverTime.Subtract(new TimeSpan(1, 0, 0, 0));
 				}
 			}
-
+			if (this.serverTime.Days > 0)
+				this.serverTime = this.serverTime.Subtract(TimeSpan.FromDays(1));
 			API.NetworkOverrideClockTime(this.serverTime.Hours, this.serverTime.Minutes, this.serverTime.Seconds);
-
-			// this.Logger.Debug("Client time: " + this.serverTime);
 			await Delay(TimeSpan.FromSeconds(1));
 		}
 	}

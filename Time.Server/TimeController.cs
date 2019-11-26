@@ -2,10 +2,8 @@ using System;
 using System.Timers;
 using JetBrains.Annotations;
 using NFive.SDK.Core.Diagnostics;
+using NFive.SDK.Server.Communications;
 using NFive.SDK.Server.Controllers;
-using NFive.SDK.Server.Events;
-using NFive.SDK.Server.Rcon;
-using NFive.SDK.Server.Rpc;
 using NFive.Time.Shared;
 using NFive.Time.Shared.Utilities;
 
@@ -18,50 +16,62 @@ namespace NFive.Time.Server
 		private Timer timeUpdateTimer;
 		private Timer timeBroadcastTimer;
 		private DateTime previousTime;
-
-		public TimeController(ILogger logger, IEventManager events, IRpcHandler rpc, IRconManager rcon, Configuration configuration) : base(logger, events, rpc, rcon, configuration)
+		private ICommunicationManager comms;
+		public TimeController(ILogger logger, Configuration configuration, ICommunicationManager comms) : base(logger, configuration)
 		{
+			this.comms = comms;
 			// Send configuration when requested
-			this.Rpc.Event(TimeEvents.Configuration).On(e => e.Reply(this.Configuration));
-
-			this.Rpc.Event(TimeEvents.Sync).On(e =>
+			this.comms.Event(TimeEvents.Configuration).FromClients().OnRequest(e => e.Reply(this.Configuration));
+			this.comms.Event(TimeEvents.Sync).FromClients().OnRequest(e =>
 			{
 				e.Reply(this.Configuration.UseRealTime
 					? new TimeSpan(DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second)
 					: this.serverTime);
 			});
 
+			this.comms.Event(TimeEvents.IsRealTime).FromServer().OnRequest(e => e.Reply(this.Configuration.UseRealTime));
+			this.comms.Event(TimeEvents.Get).FromServer().OnRequest(e => e.Reply(this.serverTime));
+			this.comms.Event(TimeEvents.Set).FromServer().On<TimeSpan>((e, t) =>
+			{
+				if (this.Configuration.UseRealTime) return;
+				this.serverTime = t;
+				BroadcastTime(null, null);
+
+			});
+
 			this.serverTime = this.Configuration.StartTime;
 			this.previousTime = DateTime.Now;
 
-			timeUpdateTimer = new Timer()
+			this.timeUpdateTimer = new Timer()
 			{
 				AutoReset = true,
 				Enabled = true,
 				Interval = 1000
 			};
-			timeUpdateTimer.Elapsed += UpdateTime;
+			this.timeUpdateTimer.Elapsed += UpdateTime;
 
-			timeBroadcastTimer = new Timer()
+			this.timeBroadcastTimer = new Timer()
 			{
 				AutoReset = true,
 				Enabled = true,
 				Interval = this.Configuration.TimeSyncRate.TotalMilliseconds
 			};
-			timeBroadcastTimer.Elapsed += BroadcastTime;
+			this.timeBroadcastTimer.Elapsed += BroadcastTime;
 		}
 
 		private void BroadcastTime(object sender, ElapsedEventArgs e)
 		{
-			this.Rpc.Event(TimeEvents.Sync).Trigger(this.serverTime);
+			if (this.Configuration.UseRealTime)
+				this.serverTime = new TimeSpan(DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second);
+			this.comms.Event(TimeEvents.Sync).ToClients().Emit(this.serverTime);
 		}
 
 		private void UpdateTime(object sender, ElapsedEventArgs e)
 		{
 			if(this.Configuration.UseRealTime)
 				return;
-			int secondsDiff = DateTime.Now.Second - this.previousTime.Second;
-			if(secondsDiff == 0)
+			int secondsDiff = (int)(DateTime.Now - this.previousTime).TotalSeconds;
+			if (secondsDiff < 1)
 				return;
 			this.previousTime = DateTime.Now;
 			for (int i = 0; i < secondsDiff; i++)
@@ -70,19 +80,17 @@ namespace NFive.Time.Server
 					this.Configuration.NightHours.End))
 				{
 					int elapsedSeconds = (int) Math.Ceiling(this.Configuration.Modifiers.Night);
-					this.serverTime = this.serverTime.Add(new TimeSpan(0, 0, elapsedSeconds));
+					this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
 				}
 				else
 				{
 					int elapsedSeconds = (int) Math.Ceiling(this.Configuration.Modifiers.Day);
-					this.serverTime = this.serverTime.Add(new TimeSpan(0, 0, elapsedSeconds));
+					this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
 				}
 
 				if (this.serverTime.Days > 0)
-					this.serverTime = this.serverTime.Subtract(new TimeSpan(1, 0, 0, 0));
+					this.serverTime = this.serverTime.Subtract(TimeSpan.FromDays(1));
 			}
-
-			// this.Logger.Debug("Server time: " + this.serverTime);
 		}
 
 		public override void Reload(Configuration configuration)
@@ -91,7 +99,7 @@ namespace NFive.Time.Server
 			base.Reload(configuration);
 
 			// Send out new configuration
-			this.Rpc.Event(TimeEvents.Configuration).Trigger(this.Configuration);
+			this.comms.Event(TimeEvents.Configuration).ToClients().Emit(configuration);
 		}
 	}
 }
