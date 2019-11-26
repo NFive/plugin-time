@@ -65,11 +65,9 @@ namespace NFive.Time.Client
 						int elapsedSeconds = (int)Math.Ceiling(this.config.Modifiers.Day);
 						this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
 					}
-
-					if (this.serverTime.Days > 0)
-						this.serverTime = this.serverTime.Subtract(new TimeSpan(1, 0, 0, 0));
 				}
 			}
+
 			if (this.serverTime.Days > 0)
 				this.serverTime = this.serverTime.Subtract(TimeSpan.FromDays(1));
 			API.NetworkOverrideClockTime(this.serverTime.Hours, this.serverTime.Minutes, this.serverTime.Seconds);
