@@ -5,7 +5,7 @@ using NFive.SDK.Server;
 [assembly: ServerPlugin(SDK.Version)]
 
 [assembly: AssemblyTitle("NFive Time")]
-[assembly: AssemblyDescription("A plugin to sync time between the server and clients")]
+[assembly: AssemblyDescription("Synchronize game time between the server and clients")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("NFive")]
 [assembly: AssemblyProduct("NFive Time Server Plugin")]

@@ -47,6 +47,7 @@
     </Reference>
     <Reference Include="NFive.SDK.Core.net, Version=0.1.0.60, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NFive.SDK.Core.0.1.0.60\lib\net452\NFive.SDK.Core.net.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
   </ItemGroup>

@@ -1,6 +1,6 @@
 name: NFive/plugin-time
 version: 1.0.0
-description: A plugin to sync time between the server and clients
+description: Synchronize game time between the server and clients
 author: NFive
 license: LGPL-3.0-or-later
 server:
