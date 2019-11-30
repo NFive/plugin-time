@@ -78,7 +78,7 @@ namespace NFive.Time.Server
 			if (this.Configuration.RealTime) return;
 
 			// Get time since last update
-			var secondsDiff = (int)(DateTime.UtcNow - this.previousTime).TotalSeconds;
+			var secondsDiff = (int)Math.Round((DateTime.UtcNow - this.previousTime).TotalMilliseconds / 1000);
 			if (secondsDiff < 1) return;
 
 			this.previousTime = DateTime.UtcNow;
