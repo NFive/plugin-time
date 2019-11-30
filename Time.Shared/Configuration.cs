@@ -5,22 +5,28 @@ namespace NFive.Time.Shared
 {
 	public class Configuration : ControllerConfiguration
 	{
-		public bool UseRealTime { get; set; } = true;
-		public TimeSpan StartTime { get; set; } = new TimeSpan(12,0,0); 
+		public TimeSpan SyncRate { get; set; } = TimeSpan.FromHours(1);
+
+		public NighttimeConfiguration Nighttime { get; set; } = new NighttimeConfiguration();
+
+		public bool RealTime { get; set; } = true;
+
+		public TimeSpan BootTime { get; set; } = TimeSpan.FromHours(12);
+
 		public TimeModifiersConfiguration Modifiers { get; set; } = new TimeModifiersConfiguration();
-		public NightHoursConfiguration NightHours { get; set; } = new NightHoursConfiguration();
-		public TimeSpan TimeSyncRate { get; set; } = new TimeSpan(1, 0, 0); 
+	}
+
+	public class NighttimeConfiguration
+	{
+		public TimeSpan Start { get; set; } = TimeSpan.FromHours(19);
+
+		public TimeSpan End { get; set; } = TimeSpan.FromHours(4);
 	}
 
 	public class TimeModifiersConfiguration
 	{
 		public float Day { get; set; } = 1f;
-		public float Night { get; set; } = 1f;
-	}
 
-	public class NightHoursConfiguration
-	{
-		public TimeSpan Start { get; set; } = new TimeSpan(19, 0, 0);
-		public TimeSpan End { get; set; } = new TimeSpan(4, 0, 0);
+		public float Night { get; set; } = 1f;
 	}
 }

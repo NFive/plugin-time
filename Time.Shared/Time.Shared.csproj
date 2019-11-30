@@ -55,7 +55,7 @@
     <Compile Include="TimeEvents.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\TimeHelper.cs" />
+    <Compile Include="Extensions\ConfigurationExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

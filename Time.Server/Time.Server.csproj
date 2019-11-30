@@ -112,10 +112,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Communications\ITimeManager.cs" />
-    <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TimeController.cs" />
-    <Compile Include="Storage\StorageContext.cs" />
     <Compile Include="TimeManager.cs" />
   </ItemGroup>
   <ItemGroup>

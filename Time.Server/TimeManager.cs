@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using NFive.SDK.Server.Communications;
 using NFive.SDK.Server.IoC;
 using NFive.Time.Server.Communications;
@@ -7,10 +8,11 @@ using NFive.Time.Shared;
 
 namespace NFive.Time.Server
 {
+	[PublicAPI]
 	[Component(Lifetime = Lifetime.Singleton)]
 	public class TimeManager : ITimeManager
 	{
-		private ICommunicationManager comms;
+		private readonly ICommunicationManager comms;
 
 		public TimeManager(ICommunicationManager comms)
 		{
@@ -31,6 +33,5 @@ namespace NFive.Time.Server
 		{
 			this.comms.Event(TimeEvents.Set).ToServer().Emit(time);
 		}
-
 	}
 }

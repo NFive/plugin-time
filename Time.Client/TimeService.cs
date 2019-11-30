@@ -1,16 +1,16 @@
-using JetBrains.Annotations;
-using NFive.SDK.Client.Commands;
-using NFive.SDK.Client.Events;
-using NFive.SDK.Client.Services;
-using NFive.SDK.Core.Diagnostics;
-using NFive.SDK.Core.Models.Player;
 using System;
 using System.Threading.Tasks;
 using CitizenFX.Core.Native;
+using JetBrains.Annotations;
+using NFive.SDK.Client.Commands;
 using NFive.SDK.Client.Communications;
+using NFive.SDK.Client.Events;
 using NFive.SDK.Client.Interface;
+using NFive.SDK.Client.Services;
+using NFive.SDK.Core.Diagnostics;
+using NFive.SDK.Core.Models.Player;
 using NFive.Time.Shared;
-using NFive.Time.Shared.Utilities;
+using NFive.Time.Shared.Extensions;
 
 namespace NFive.Time.Client
 {
@@ -28,49 +28,46 @@ namespace NFive.Time.Client
 			// Request server configuration
 			this.config = await this.Comms.Event(TimeEvents.Configuration).ToServer().Request<Configuration>();
 
+			// Handle server periodic sync
 			this.Comms.Event(TimeEvents.Sync).FromServer().On<TimeSpan>((e, t) =>
 			{
 				this.serverTime = t;
-				this.previousTime = DateTime.Now;
+				this.previousTime = DateTime.UtcNow;
 			});
 
+			// Sync with server now
 			this.serverTime = await this.Comms.Event(TimeEvents.Sync).ToServer().Request<TimeSpan>();
-			this.previousTime = DateTime.Now;
-			this.Ticks.On(TimeUpdateTick);
+			this.previousTime = DateTime.UtcNow;
+
+			this.Ticks.On(UpdateTick);
 		}
 
-		private async Task TimeUpdateTick()
+		private async Task UpdateTick()
 		{
-			int secondsDiff = (int)(DateTime.Now - this.previousTime).TotalSeconds;
-			if (secondsDiff < 1)
-				return;
-			this.previousTime = DateTime.Now;
+			// Get time since last update
+			var secondsDiff = (int)(DateTime.UtcNow - this.previousTime).TotalSeconds;
+			if (secondsDiff < 1) return;
 
-			if (this.config.UseRealTime)
+			this.previousTime = DateTime.UtcNow;
+
+			if (this.config.RealTime)
 			{
 				this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(secondsDiff));
 			}
 			else
 			{
-				for (int i = 0; i < secondsDiff; i++)
+				for (var i = 0; i < secondsDiff; i++)
 				{
-					if (TimeHelper.IsNightTime(this.serverTime, this.config.NightHours.Start,
-						this.config.NightHours.End))
-					{
-						int elapsedSeconds = (int)Math.Ceiling(this.config.Modifiers.Night);
-						this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
-					}
-					else
-					{
-						int elapsedSeconds = (int)Math.Ceiling(this.config.Modifiers.Day);
-						this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(elapsedSeconds));
-					}
+					this.serverTime = this.serverTime.Add(TimeSpan.FromSeconds(Math.Ceiling(this.serverTime.IsNightTime(this.config.Nighttime) ? this.config.Modifiers.Night : this.config.Modifiers.Day)));
 				}
 			}
 
-			if (this.serverTime.Days > 0)
-				this.serverTime = this.serverTime.Subtract(TimeSpan.FromDays(1));
+			// Ignore date
+			if (this.serverTime.Days > 0) this.serverTime = this.serverTime.Subtract(TimeSpan.FromDays(this.serverTime.Days));
+
+			// Set game time
 			API.NetworkOverrideClockTime(this.serverTime.Hours, this.serverTime.Minutes, this.serverTime.Seconds);
+
 			await Delay(TimeSpan.FromSeconds(1));
 		}
 	}
