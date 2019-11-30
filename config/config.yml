@@ -4,7 +4,7 @@ sync_rate: 1h
 # Threshold times to be considered night
 nighttime:
   start: 19:00:00 # 7PM
-  end: 4:00:00 # 4AM
+  end: 6:00:00 # 6AM
 
 # Set to true to have the in-game time be equal to real time
 # Setting to true disables all other below functionality
@@ -18,5 +18,5 @@ boot_time: 12:00:00 # Noon
 # 60 means that one real second is one in-game minute
 # Can vary based on day and night
 modifiers:
-  day: 1.0
-  night: 1.0
+  day: 30.0
+  night: 30.0
